@@ -72,11 +72,8 @@ class Invoice:
             raise ValueError("Payment information is not set or not valid")
         fee, reading_credits = self.calculate_fee(self.customer)
         is_paid: bool = self._pay_with_credit_card(card, fee)
-        if is_paid:
-            self.is_closed = True
-            LibraryRepository.update_invoice(self)
-            self.customer.reading_credits = reading_credits
-            LibraryRepository.update_user(self.customer)
+
+        self._is_paid(self, is_paid, reading_credits)
 
         return is_paid
 
@@ -96,21 +93,12 @@ class Invoice:
             raise ValueError("Payment information is not set or not valid")
         fee, reading_credits = self.calculate_fee(self.customer)
         is_paid: bool = self._pay_with_paypal(email, password, fee)
-        if is_paid:
-            self.is_closed = True
-            LibraryRepository.update_invoice(self)
-            self.customer.reading_credits = reading_credits
-            LibraryRepository.update_user(self.customer)
+        
+        self._is_paid(self, is_paid, reading_credits)
 
         return is_paid
 
     def _pay_with_paypal(self, email: str, password: str, fee: float) -> bool:
-        if (
-            email is None
-            or password is None
-            or password != PAYPAL_DATA_BASE.get(email, None)
-        ):
-            return False
         if PAYPAL_ACCOUNT_BALANCE[email] >= fee:
             PAYPAL_ACCOUNT_BALANCE[email] = PAYPAL_ACCOUNT_BALANCE[email] - fee
             print(f"Paying {fee} using PayPal")
@@ -125,3 +113,15 @@ class Invoice:
             return False
         card.amount = remaining_amount
         return True
+    
+
+    def _is_paid(self, is_paid: bool, reading_credits: int):
+        if is_paid:
+            self.is_closed = True
+            LibraryRepository.update_invoice(self)
+            self.customer.reading_credits = reading_credits
+            LibraryRepository.update_user(self.customer)
+        return
+
+
+
